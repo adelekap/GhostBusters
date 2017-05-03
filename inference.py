@@ -192,14 +192,28 @@ class ParticleFilter(InferenceModule):
   def initializeUniformly(self, gameState, numParticles=300):
     "Initializes a list of particles."
     self.numParticles = numParticles
-    "*** YOUR CODE HERE ***"
+    self.particles = [self.legalPositions[k%len(self.legalPositions)] for k in range(self.numParticles)] # could be anywhere
+
   
   def observe(self, observation, gameState):
     "Update beliefs based on the given distance observation."
     emissionModel = busters.getObservationDistribution(observation)
     pacmanPosition = gameState.getPacmanPosition()
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+
+    beliefDistribution = self.getBeliefDistribution()
+
+    if observation == None:
+        print "uh oh"
+    for position in beliefDistribution:
+        distance = util.manhattanDistance(pacmanPosition,position)
+        beliefDistribution[position] = beliefDistribution[position] * emissionModel[distance]
+
+    if beliefDistribution.totalCount() == 0.0:
+        self.initializeUniformly(gameState)
+    else:
+        beliefDistribution.normalize()
+        self.particles=[util.sample(beliefDistribution) for i in range(self.numParticles)]
+
     
   def elapseTime(self, gameState):
     """
@@ -213,16 +227,22 @@ class ParticleFilter(InferenceModule):
     its previous position (oldPos) as well as Pacman's current
     position.
     """
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    updated = []
+    for particle in self.particles:
+        updated.append(util.sample(self.getPositionDistribution(self.setGhostPosition(gameState,particle))))
+    self.particles = updated
+
 
   def getBeliefDistribution(self):
     """
     Return the agent's current belief state, a distribution over
     ghost locations conditioned on all evidence and time passage.
     """
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    beliefDistribution = util.Counter()
+    for p in self.particles:
+        beliefDistribution[p] += 1.0
+    beliefDistribution.normalize()
+    return beliefDistribution
 
 class MarginalInference(InferenceModule):
   "A wrapper around the JointInference module that returns marginal beliefs about ghosts."
